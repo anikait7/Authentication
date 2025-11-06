@@ -3,7 +3,10 @@ import { ApiResponse } from "../utils/Api-Response.js";
 import { ApiError } from "../utils/Api-Errors.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { sendEmail } from "../utils/mail.js";
-import { emailVerificationMailGenContent } from "../utils/mail.js";
+import {
+  emailVerificationMailGenContent,
+  forgotPasswordMailGenContent,
+} from "../utils/mail.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
@@ -55,7 +58,7 @@ const registerUser = asyncHandler(async (req, res) => {
     subject: "Please verify your email",
     mailgenContent: emailVerificationMailGenContent(
       user.username,
-      `${req.protocol}://${req.get("host")}/api/v1/users/verify-email/${unHashedToken}`,
+      `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
     ),
   });
 
@@ -259,7 +262,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          { accessTOken, userId: user._id },
+          { accessToken, userId: user._id },
           "Access token refreshed successfully.",
         ),
       );
@@ -322,10 +325,10 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 
 const changePassword = asyncHandler(async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+  const { oldPassword, newPassword } = req.body;
   const user = await User.findById(req.user._id).select("+password");
 
-  const isPasswordValid = await user.isPasswordCorrect(currentPassword);
+  const isPasswordValid = await user.isPasswordCorrect(oldPassword);
 
   if(!isPasswordValid)
     throw new ApiError(401, "Current password is incorrect");
@@ -333,7 +336,7 @@ const changePassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   await user.save({ validateBeforeSave: false });
 
-  return res.starts(200)
+  return res.status(200)
     .json(new ApiResponse(200, {}, "Password changed successfully."));
 });
 
